@@ -12,4 +12,4 @@ Read a file to encrypt it and save it in file form again.</br>
 </br>
 
 #### RSA code 
-I used the code of https://github.com/cezane/optee_rsa_example
+Used the code of https://github.com/cezane/optee_rsa_example
