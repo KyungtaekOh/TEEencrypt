@@ -41,6 +41,5 @@
 #define TA_TEEencrypt_CMD_DEC_VALUE		1
 #define TA_RSA_CMD_GENKEYS			2
 #define TA_RSA_CMD_ENCRYPT			3
-#define TA_RSA_CMD_DECRYPT			4
 
 #endif /*TA_TEEencrypt_H*/
