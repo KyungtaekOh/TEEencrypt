@@ -50,7 +50,7 @@ void rsa_gen_keys(int *sess) { //struct ta_attrs *ta) {
 	res = TEEC_InvokeCommand(sess, TA_RSA_CMD_GENKEYS, NULL, NULL);
 	if (res != TEEC_SUCCESS)
 		errx(1, "\nTEEC_InvokeCommand(TA_RSA_CMD_GENKEYS) failed %#x\n", res);
-	printf("\n====Keys generated====\n");
+	printf("====Keys generated====\n");
 }
 
 int main(int argc, char *argv[])
