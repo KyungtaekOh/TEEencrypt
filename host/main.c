@@ -50,12 +50,11 @@ void rsa_gen_keys(int *sess) { //struct ta_attrs *ta) {
 	res = TEEC_InvokeCommand(sess, TA_RSA_CMD_GENKEYS, NULL, NULL);
 	if (res != TEEC_SUCCESS)
 		errx(1, "\nTEEC_InvokeCommand(TA_RSA_CMD_GENKEYS) failed %#x\n", res);
-	printf("\n=========== Keys already generated. ==========\n");
+	printf("\n====Keys generated====\n");
 }
 
 int main(int argc, char *argv[])
 {
-	
 	TEEC_Result res;
 	TEEC_Context ctx;
 	TEEC_Session sess;
@@ -100,95 +99,98 @@ int main(int argc, char *argv[])
 
 	// argv 0:TEEencrypt 1:-e, 2:text file
 	if(!strcmp(enc_cmd, argv[1])){
-		// Encoding Option 
+	// Encryption
+		TEEC_Result ret;
 		// Read file
 		FILE* fs;
 		fs = fopen(argv[2], "r");
 		fread(plaintext, sizeof(plaintext), 1, fs);
 		fclose(fs);
-		printf("====PlainText====\n%s",plaintext);
-		printf("=================\n\n");
+		printf("======PlainText=======\n%s\n",plaintext);
 		memcpy(op.params[0].tmpref.buffer, plaintext, MAX_LEN);
+		char *cipher = NULL;
 
 		// InvokeCommand
-		if(!strcmp(argv[3], csr_cmd) || argv[3] == NULL){
+		if(!strcmp(argv[3], csr_cmd)){	// Caesar encrypt
 			res = TEEC_InvokeCommand(&sess, TA_TEEencrypt_CMD_INC_VALUE, &op, 						&err_origin);
-			if (res != TEEC_SUCCESS)
-				errx(1, "TEEC_InvokeCommand failed with code 0x%x origin 0x%x", res, err_origin);
-		}
-		else if(!strcmp(argv[3], rsa_cmd)){
-			op.params[2].tmpref.buffer = clear;
-			op.params[2].tmpref.size = RSA_MAX_PLAIN_LEN_1024;
-			op.params[3].tmpref.buffer = ciph;
-			op.params[3].tmpref.size = RSA_CIPHER_LEN_1024;
-			rsa_gen_keys(&sess);
-			printf("\n============ RSA ENCRYPT CA SIDE ============\n");
-			res = TEEC_InvokeCommand(&sess, TA_RSA_CMD_ENCRYPT, &op, &err_origin);
-			if (res != TEEC_SUCCESS)
-				errx(1, "\nTEEC_InvokeCommand(TA_RSA_CMD_ENCRYPT) failed 0x%x origin 0x%x\n", res, err_origin);
-			printf("\nThe text sent was encrypted: %s\n", ciph);
-				
-		}else{
-			printf("Invalid execution statement.\n");
-			return 1;
-		}
-
-		if(res == TEEC_SUCCESS){
+			if (ret != TEEC_SUCCESS)
+				errx(1, "TEEC_InvokeCommand failed with code 0x%x origin 0x%x", ret, err_origin);
 			memcpy(ciphertext, op.params[0].tmpref.buffer, MAX_LEN);
-			printf("====Ciphertext====\n%s", ciphertext);
-			printf("==================\n");
-					
 			int key_value = op.params[1].value.a;
-			printf("RandomNumber : %d\n", key_value);
-			// Write file
-			char *cipher = ciphertext;
-			FILE *fc = fopen("ciphertext.txt", "w");
-			fwrite(cipher, strlen(cipher), 1, fc); 
-			fclose(fc);
-					
 			char buf[10]={0,};
 			sprintf(buf, "%d", key_value);
 			FILE *fk = fopen("ciphertext_key.txt", "w");
 			fwrite(buf, strlen(buf), 1, fk); 
 			fclose(fk);
-			printf("Successful Saving\n");
+			cipher = ciphertext;
+		}
+		else if(!strcmp(argv[3], rsa_cmd)){	// RSA encrypt
+			op.params[2].tmpref.buffer = clear;
+			op.params[2].tmpref.size = RSA_MAX_PLAIN_LEN_1024;
+			op.params[3].tmpref.buffer = ciph;
+			op.params[3].tmpref.size = RSA_CIPHER_LEN_1024;
+
+			rsa_gen_keys(&sess);
+			ret = TEEC_InvokeCommand(&sess, TA_RSA_CMD_ENCRYPT, &op, &err_origin);
+			if (ret != TEEC_SUCCESS)
+				errx(1, "\nTEEC_InvokeCommand(TA_RSA_CMD_ENCRYPT) failed 0x%x origin 0x%x\n", ret, err_origin);
+			//printf("\nThe text sent was encrypted: %s\n", ciph);
+			cipher = ciph;
+		}else{
+			printf("Invalid execution statement.\n");
+			return 1;
+		}
+
+		if(ret == TEEC_SUCCESS){
+			printf("======Ciphertext======\n%s", cipher);
+			// Write file
+			
+			FILE *fc = fopen("ciphertext.txt", "w");
+			fwrite(cipher, strlen(cipher), 1, fc); 
+			fclose(fc);
+
+			printf("*Successful Saving\n");
 		}
 	}
 	else if(!strcmp(dec_cmd, argv[1])){
+	// Decryption 
+		TEEC_Result ret;
 		// Read CipherText
 		FILE* fc = fopen(argv[2], "r");
 		fread(ciphertext, sizeof(ciphertext), 1, fc);
 		fclose(fc);
-		printf("====Ciphertext====\n%s", ciphertext);
-		printf("==================\n");
-		memcpy(op.params[0].tmpref.buffer, ciphertext, MAX_LEN);
-
-		// Read KeyValue
-		FILE* fk = fopen(argv[3], "r");
-		fread(keytext, sizeof(keytext), 1, fk);
-		fclose(fk);
-		int value = 0;
-		value = atoi(keytext);
-		printf("====Key Value====\n%d\n",value);
-		printf("=================\n\n");
-		op.params[1].value.a = value;
-		printf("Successful Reading\n");
+		printf("======Ciphertext======\n%s\n", ciphertext);
+		char *plain = NULL;
 
 		// InvokeCommand
-		res = TEEC_InvokeCommand(&sess, TA_TEEencrypt_CMD_DEC_VALUE, &op, 							&err_origin);
-		if (res != TEEC_SUCCESS)
-			errx(1, "TEEC_InvokeCommand failed with code 0x%x origin 0x%x",
-				res, err_origin);
-		memcpy(plaintext, op.params[0].tmpref.buffer, MAX_LEN);
-		printf("====Plaintext====\n%s", plaintext);
-		printf("=================\n");
+		if(!strcmp(argv[4], csr_cmd)){	// Caesar decrypt
+			// Read KeyValue
+			FILE* fk = fopen(argv[3], "r");
+			fread(keytext, sizeof(keytext), 1, fk);
+			fclose(fk);
+			int value = 0;
+			value = atoi(keytext);
+			printf("======Key Value=======\n%d\n\n",value);
+			op.params[1].value.a = value;
 
-		// Write file
-		char *plain = plaintext;
-		FILE *fp = fopen("plaintext_dec.txt", "w");
-		fwrite(plain, strlen(plain), 1, fp); 
-		fclose(fp);
-		printf("Successful Saving\n");
+			memcpy(op.params[0].tmpref.buffer, ciphertext, MAX_LEN);
+			ret = TEEC_InvokeCommand(&sess, TA_TEEencrypt_CMD_DEC_VALUE, &op, 							&err_origin);
+			if (ret != TEEC_SUCCESS)
+				errx(1, "TEEC_InvokeCommand failed with code 0x%x origin 0x%x",
+					ret, err_origin);
+			memcpy(plaintext, op.params[0].tmpref.buffer, MAX_LEN);
+			plain = plaintext;
+		}else{
+			printf("Invalid execution statement.\n");
+		}
+		if(ret == TEEC_SUCCESS){
+			printf("======Plaintext=======\n%s", plain);
+
+			// Write file
+			FILE *fp = fopen("plaintext_dec.txt", "w");
+			fwrite(plain, strlen(plain), 1, fp); 
+			fclose(fp);
+		}
 	}
 	
 
