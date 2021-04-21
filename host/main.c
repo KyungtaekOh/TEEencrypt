@@ -39,18 +39,13 @@
 #define RSA_MAX_PLAIN_LEN_1024 86 // (1024/8) - 42 (padding)
 #define RSA_CIPHER_LEN_1024 (RSA_KEY_SIZE / 8)
 
-struct ta_attrs {
-	TEEC_Context ctx;
-	TEEC_Session sess;
-};
-
 void rsa_gen_keys(int *sess) { //struct ta_attrs *ta) {
 	TEEC_Result res;
 
 	res = TEEC_InvokeCommand(sess, TA_RSA_CMD_GENKEYS, NULL, NULL);
 	if (res != TEEC_SUCCESS)
 		errx(1, "\nTEEC_InvokeCommand(TA_RSA_CMD_GENKEYS) failed %#x\n", res);
-	printf("\n====Keys generated====\n");
+	printf("====Keys generated====\n");
 }
 
 int main(int argc, char *argv[])
@@ -85,15 +80,17 @@ int main(int argc, char *argv[])
 	
 	memset(&op, 0, sizeof(op));
 					// TEEC_VALUE_INOUT
-	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_OUTPUT,	// Enc-Dec
-					 TEEC_VALUE_INOUT,		// RandomKey
-					 TEEC_MEMREF_TEMP_INPUT, 
-					 TEEC_MEMREF_TEMP_OUTPUT);
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_OUTPUT,	// Caesar Enc-Dec
+					 TEEC_VALUE_INOUT,		// Caesar RandomKey
+					 TEEC_MEMREF_TEMP_INPUT, 	// RSA	Enc-Dec
+					 TEEC_MEMREF_TEMP_OUTPUT);	// RSA	Enc-Dec
 	op.params[0].tmpref.buffer = plaintext;
 	op.params[0].tmpref.size = MAX_LEN;
 
 	if(argc == 0 || argc > 5){
 		printf("Invalid execution statement.\n");
+		TEEC_CloseSession(&sess);
+		TEEC_FinalizeContext(&ctx);
 		return 1;
 	}
 
@@ -138,6 +135,8 @@ int main(int argc, char *argv[])
 			cipher = ciph;
 		}else{
 			printf("Invalid execution statement.\n");
+			TEEC_CloseSession(&sess);
+			TEEC_FinalizeContext(&ctx);		
 			return 1;
 		}
 
@@ -182,6 +181,9 @@ int main(int argc, char *argv[])
 			plain = plaintext;
 		}else{
 			printf("Invalid execution statement.\n");
+			TEEC_CloseSession(&sess);
+			TEEC_FinalizeContext(&ctx);
+			return 1;
 		}
 		if(ret == TEEC_SUCCESS){
 			printf("======Plaintext=======\n%s", plain);
@@ -195,7 +197,6 @@ int main(int argc, char *argv[])
 	
 
 	TEEC_CloseSession(&sess);
-
 	TEEC_FinalizeContext(&ctx);
 
 	return 0;
