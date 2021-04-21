@@ -84,11 +84,6 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t param_types,
 
 	if (param_types != exp_param_types)
 		return TEE_ERROR_BAD_PARAMETERS;
-
-	/* Unused parameters */
-	//(void)&params;
-	//(void)&sess_ctx;
-
 	struct rsa_session *sess;
 	sess = TEE_Malloc(sizeof(*sess), 0);
 	if (!sess)
@@ -100,13 +95,6 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t param_types,
 	*sess_ctx = (void *)sess;
 	DMSG("\nSession %p: newly allocated\n", *sess_ctx);
 
-	/*
-	 * The DMSG() macro is non-standard, TEE Internal API doesn't
-	 * specify any means to logging from a TA.
-	 */
-	IMSG("Hello World!\n");
-
-	/* If return value != TEE_SUCCESS the session will not be created. */
 	return TEE_SUCCESS;
 }
 
@@ -118,19 +106,15 @@ void TA_CloseSessionEntryPoint(void __maybe_unused *sess_ctx)
 {
 	struct rsa_session *sess;
 
-	/* Get ciphering context from session ID */
 	DMSG("Session %p: release session", sess_ctx);
 	sess = (struct rsa_session *)sess_ctx;
 
-	/* Release the session resources
-	   These tests are mandatories to avoid PANIC TA (TEE_HANDLE_NULL) */
 	if (sess->key_handle != TEE_HANDLE_NULL)
 		TEE_FreeTransientObject(sess->key_handle);
 	if (sess->op_handle != TEE_HANDLE_NULL)
 		TEE_FreeOperation(sess->op_handle);
 	TEE_Free(sess);
 
-	//(void)&sess_ctx; /* Unused parameter */
 	IMSG("Goodbye!\n");
 }
 
